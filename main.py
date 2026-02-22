@@ -92,8 +92,6 @@ if semantic_errors:
     for err in semantic_errors:
         print(err)
 
-    print("\nSemantic errors written to semantic_errors.txt")
-
 else:
     print("No semantic issues detected.")
 
