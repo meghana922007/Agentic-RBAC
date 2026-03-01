@@ -37,7 +37,8 @@ class SymbolTable:
         self.users = {}
 
         self.duplicate_roles = []   
-        self.duplicate_users = []   
+        self.duplicate_users = []
+        self.mutex_pairs = set()   
 
     def add_role(self, role_name, line):
         if role_name in self.roles:

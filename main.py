@@ -1,6 +1,7 @@
 from frontend.lexer import lex
 from frontend.parser import parse_policy
 from frontend.semantic import perform_semantic_analysis
+from core.security_analysis import run_security_analysis
 
 DSL_FILE = "dsl/policy.rbac"
 
@@ -95,4 +96,23 @@ if semantic_errors:
 else:
     print("No semantic issues detected.")
 
-print(" Compilation Finished")
+print("\n[Phase 4] Security Analysis (Week 8)")
+
+security_results = run_security_analysis(table)
+
+if security_results:
+    print("\n----- SECURITY REPORT -----")
+    for issue in security_results:
+        print(issue)
+
+    with open("week8_security_report.txt", "w") as f:
+        for issue in security_results:
+            f.write(issue + "\n")
+
+    print("\nSecurity report written to week8_security_report.txt")
+
+else:
+    print("No security violations detected.")
+    open("week8_security_report.txt", "w").close()
+    
+print("\nCompilation Finished")

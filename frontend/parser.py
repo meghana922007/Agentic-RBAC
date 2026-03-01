@@ -5,7 +5,8 @@ from frontend.lexer import (
     TOKEN_ROLE, TOKEN_USER, TOKEN_IDENTIFIER,
     TOKEN_EXTENDS, TOKEN_LBRACE, TOKEN_RBRACE,
     TOKEN_EQUALS, TOKEN_PERMISSIONS, TOKEN_ROLES,
-    TOKEN_LBRACKET, TOKEN_RBRACKET,
+    TOKEN_LBRACKET, TOKEN_RBRACKET, 
+    TOKEN_MUTEX,
     TOKEN_EOF
 )
 def parse_policy(file_path):
@@ -238,7 +239,31 @@ def parse_policy(file_path):
 
             ast_nodes.append(node)
             continue
+        elif tok.type == TOKEN_MUTEX:
 
+            mutex_line = tok.line
+            advance()
+
+            if not expect(TOKEN_IDENTIFIER,
+                          "Expected first role name after 'mutex'",
+                          mutex_line):
+                advance()
+                continue
+
+            role1 = current().value
+            advance()
+
+            if not expect(TOKEN_IDENTIFIER,
+                          "Expected second role name after 'mutex'",
+                          mutex_line):
+                advance()
+                continue
+
+            role2 = current().value
+            advance()
+
+            table.mutex_pairs.add((role1, role2))
+            continue
         else:
             add_error(
                 f"[SYNTAX ERROR] Line {tok.line}: "

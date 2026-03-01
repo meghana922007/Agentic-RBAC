@@ -11,6 +11,7 @@ TOKEN_COMMA = "COMMA"
 TOKEN_LBRACKET = "LBRACKET"
 TOKEN_RBRACKET = "RBRACKET"
 TOKEN_EOF = "EOF"
+TOKEN_MUTEX = "MUTEX"
 
 class Token:
     def __init__(self, type_, value, line):
@@ -58,6 +59,8 @@ def lex(file_path):
                 tokens.append(Token(TOKEN_RBRACKET, part, line_num))
             elif part == ",":
                 tokens.append(Token(TOKEN_COMMA, part, line_num))
+            elif part == "mutex":
+                tokens.append(Token(TOKEN_MUTEX, part, line_num))
             else:
                 tokens.append(Token(TOKEN_IDENTIFIER, part, line_num))
 
