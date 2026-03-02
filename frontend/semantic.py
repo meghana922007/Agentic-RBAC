@@ -26,7 +26,7 @@ def perform_semantic_analysis(table):
                     f"[SEMANTIC ERROR] Line {user_obj.line}: "
                     f"User '{user_name}' references undefined role '{role}'"
                 )
-        # Week 8: Mutex Role Conflict Detection
+
     for user_name, user_obj in table.users.items():
         assigned = set(user_obj.roles)
 
@@ -43,7 +43,6 @@ def perform_semantic_analysis(table):
                 f"[SEMANTIC ERROR] Line {role_obj.line}: "
                 f"Role '{role_name}' has no permissions defined"
             )
-        # Week 8: Redundant Permission Detection via Inheritance
     for role_name, role_obj in table.roles.items():
 
         inherited_perms = set()

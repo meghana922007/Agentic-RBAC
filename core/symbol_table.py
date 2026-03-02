@@ -30,7 +30,6 @@ class User:
     def __repr__(self):
         return f"User(name={self.name}, roles={self.roles})"
 
-
 class SymbolTable:
     def __init__(self):
         self.roles = {}
@@ -44,6 +43,11 @@ class SymbolTable:
         if role_name in self.roles:
             self.duplicate_roles.append((role_name, line))
             return False
+
+
+
+
+
 
         self.roles[role_name] = Role(role_name, line)
         return True
