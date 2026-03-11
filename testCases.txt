@@ -1,0 +1,67 @@
+WEEK 7 
+
+TEST CASE 1 - Undefined Role
+
+user Bob{
+    roles = [jf]
+}
+
+TEST CASE 2 - Undefined Parent Role
+
+role D extends hkj{
+
+}
+
+TEST CASE 3 - Duplicate Role Detection
+
+role D {
+
+}
+role D{
+
+}
+
+TEST CASE 4 - Circilar Role Inheritence
+role A extends B {
+
+}
+role B extends A{
+
+}
+
+
+WEEK 8
+TEST 1 - Role Conflict
+
+role A {
+    permissions = [read,write]
+}
+role B {
+    permissions = [read]
+}
+user Al{
+    roles = [A,B]
+}
+mutex A B
+
+
+TEST 2 - Redundant Permissio via inheritance
+
+role Base{
+    permissions = [read]
+}
+role M extends Base{
+    permissions = [read,write]
+}
+
+
+TEST 3 - Least Privilege Vioaltion (Empty Role)
+
+role Guest{
+
+}
+user Bob{
+    roles = [Guest]
+}
+
+

@@ -11,7 +11,7 @@ role Developer {
 }
 
 role Tester extends Developer {
-    permissions = [test, report]
+    permissions = [test,report]
 }
 
 role Intern {
