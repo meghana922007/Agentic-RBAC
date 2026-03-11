@@ -43,12 +43,7 @@ class SymbolTable:
         if role_name in self.roles:
             self.duplicate_roles.append((role_name, line))
             return False
-
-
-
-
-
-
+        
         self.roles[role_name] = Role(role_name, line)
         return True
 

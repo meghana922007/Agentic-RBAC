@@ -41,7 +41,6 @@ def detect_redundant_permissions(table):
 def enforce_least_privilege(table):
     results = []
 
-    # Empty roles
     for role_name, role_obj in table.roles.items():
         if not role_obj.permissions and not role_obj.parents:
             results.append(
@@ -49,7 +48,6 @@ def enforce_least_privilege(table):
                 f"has no effective permissions"
             )
 
-    # Users assigned undefined roles
     for user_name, user_obj in table.users.items():
         for role in user_obj.roles:
             if role not in table.roles:
