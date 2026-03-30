@@ -44,7 +44,6 @@ user Al{
 }
 mutex A B
 
-
 TEST 2 - Redundant Permissio via inheritance
 
 role Base{

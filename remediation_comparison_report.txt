@@ -1,0 +1,22 @@
+RBAC POLICY: BEFORE-AND-AFTER COMPARISON
+========================================
+
+STATUS: IMPROVED
+CRITICAL ISSUES (BEFORE): 9
+CRITICAL ISSUES (AFTER):  2
+
+APPLIED REMEDIATIONS:
+1. Remove 'extends Admin' from role 'Manager'
+   Reason: Breaks the indirect path allowing 'Auditor' to reach sensitive perms.
+2. Remove 'extends Manager' from role 'Auditor'
+   Reason: Breaks the indirect path allowing 'Intern' to reach sensitive perms.
+3. Remove 'extends Manager' from role 'Auditor'
+   Reason: Breaks the indirect path allowing 'Intern' to reach sensitive perms.
+4. Remove explicit permission 'read' from role 'Intern'
+   Reason: Permission is already inherited; keeping it makes the policy harder to maintain.
+5. Remove explicit permission 'read' from role 'Tester'
+   Reason: Permission is already inherited; keeping it makes the policy harder to maintain.
+
+REMAINING CONCERNS:
+- Role 'Manager' has unauthorized access to 'approve'
+- User 'SuspiciousUser' violates Separation of Duties (SoD).

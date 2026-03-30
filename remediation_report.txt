@@ -1,0 +1,14 @@
+RBAC POLICY REMEDIATION REPORT
+==============================
+
+BEFORE: 9 Security issues found.
+PROPOSED FIXES: 5 Suggestions provided.
+
+SUGGESTED CHANGES:
+- Remove 'extends Admin' from role 'Manager' (Reason: Breaks the indirect path allowing 'Auditor' to reach sensitive perms.)
+- Remove 'extends Manager' from role 'Auditor' (Reason: Breaks the indirect path allowing 'Intern' to reach sensitive perms.)
+- Remove 'extends Manager' from role 'Auditor' (Reason: Breaks the indirect path allowing 'Intern' to reach sensitive perms.)
+- Remove explicit permission 'read' from role 'Intern' (Reason: Permission is already inherited; keeping it makes the policy harder to maintain.)
+- Remove explicit permission 'read' from role 'Tester' (Reason: Permission is already inherited; keeping it makes the policy harder to maintain.)
+
+AFTER: Expected 0 Critical Escalations if fixes are applied.

@@ -1,0 +1,30 @@
+WEEK 10 SECURITY AUDIT REPORT
+===================================
+
+[CRITICAL] Role 'Manager' has unauthorized access to 'approve'
+REASON: Trace: Manager -> [approve]
+
+[CRITICAL] Role 'Manager' has unauthorized access to 'delete'
+REASON: Trace: Manager -> Admin -> [delete]
+
+[CRITICAL] Role 'Auditor' has unauthorized access to 'approve'
+REASON: Trace: Auditor -> Manager -> [approve]
+
+[CRITICAL] Role 'Auditor' has unauthorized access to 'delete'
+REASON: Trace: Auditor -> Manager -> Admin -> [delete]
+
+[CRITICAL] Role 'Intern' has unauthorized access to 'approve'
+REASON: Trace: Intern -> Auditor -> Manager -> [approve]
+
+[CRITICAL] Role 'Intern' has unauthorized access to 'delete'
+REASON: Trace: Intern -> Auditor -> Manager -> Admin -> [delete]
+
+[WARNING] User 'SuspiciousUser' violates Separation of Duties (SoD).
+REASON: User assigned mutually exclusive roles: 'Admin' and 'Intern'
+
+[INFO] Role 'Intern' redefines inherited permission 'read'
+REASON: Clean up suggested: Permission is already provided via inheritance.
+
+[INFO] Role 'Tester' redefines inherited permission 'read'
+REASON: Clean up suggested: Permission is already provided via inheritance.
+

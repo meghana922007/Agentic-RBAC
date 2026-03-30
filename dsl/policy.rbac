@@ -5,7 +5,45 @@ role Admin {
 role Manager extends Admin {
     permissions = [approve, review]
 }
+# Intern should NEVER have 'approve' or 'delete', but they get it here.
+role Auditor extends Manager {
+    permissions = [audit_logs]
+}
 
+role Intern extends Auditor {
+    permissions = [read]
+}
+
+# --- ATTACK SCENARIO 2: Redundancy & Conflict ---
+role Developer {
+    permissions = [read, commit, push]
+}
+
+# Tester re-defining 'read' (Redundancy)
+role Tester extends Developer {
+    permissions = [read, test, report]
+}
+
+# --- ATTACK SCENARIO 3: Circular Inheritance (Semantic Test) ---
+# Uncommenting these would trigger your semantic error handler
+# role A extends B {}
+# role B extends A {}
+
+# --- USERS ---
+user Anu {
+    roles = [Manager]
+}
+
+user BadActor {
+    roles = [Intern]
+}
+
+# Mutex Conflict: A user cannot be both Admin and Intern
+mutex Admin Intern
+
+user SuspiciousUser {
+    roles = [Admin, Intern]
+}
 role Developer {
     permissions = [read, commit, push]
 }

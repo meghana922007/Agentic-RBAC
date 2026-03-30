@@ -8,111 +8,123 @@ DSL_FILE = "dsl/policy.rbac"
 PRINT_TOKENS = False
 PRINT_AST = True
 
-print("\n==============================")
-print(" RBAC POLICY DSL COMPILER")
-print("==============================\n")
+print("\n" + "="*50)
+print("   RBAC POLICY DSL COMPILER - WEEK 10 (EXPLAINABLE)")
+print("="*50)
 
-print("[Phase 1] Lexical Analysis")
-
+# --- Phase 1: Lexical ---
+print("\n[Phase 1] Lexical Analysis...")
 tokens = lex(DSL_FILE)
-print(f"Tokens generated: {len(tokens) - 1} (excluding EOF)\n")
 
-if PRINT_TOKENS:
-    print("----- TOKENS -----")
-    for t in tokens[:-1]:
-        print(f"Line {t.line:<3} | {t.type:<15} | {t.value}")
-    print()
-
-print("[Phase 2] Parsing & Symbol Table Construction")
-
+# --- Phase 2: Parsing ---
+print("[Phase 2] Parsing & Symbol Table Construction...")
 table, ast_nodes, syntax_errors = parse_policy(DSL_FILE)
 
-print(f"Roles Loaded: {len(table.roles)}")
-print(f"Users Loaded: {len(table.users)}\n")
-
-print("----- SYMBOL TABLE -----")
-
-print("\n[Roles]")
-for role in table.roles.values():
-    print(f"Role: {role.name}")
-    print(f"  Permissions: {', '.join(role.permissions) if role.permissions else 'None'}")
-    print(f"  Inherits: {', '.join(role.parents) if role.parents else 'None'}")
-
-print("\n[Users]")
-for user in table.users.values():
-    print(f"User: {user.name}")
-    print(f"  Assigned Roles: {', '.join(user.roles) if user.roles else 'None'}")
-
-def print_ast(node, indent="", is_last=True):
-    branch = "└── " if is_last else "├── "
-    print(indent + branch + f"{node.type}: {node.name}")
-
-    child_indent = indent + ("    " if is_last else "│   ")
-
-    if node.type == "Role":
-        if node.permissions:
-            print(child_indent + f"├── Permissions: {', '.join(node.permissions)}")
-        if node.parents:
-            print(child_indent + f"├── Inherits: {', '.join(node.parents)}")
-
-    if node.type == "User":
-        if node.roles:
-            print(child_indent + f"├── Roles: {', '.join(node.roles)}")
-
-    children = getattr(node, "children", [])
-    for i, child in enumerate(children):
-        print_ast(child, child_indent, i == len(children) - 1)
-
-
-if PRINT_AST:
-    print("\n----- AST TREE -----")
-    for i, node in enumerate(ast_nodes):
-        print_ast(node, "", i == len(ast_nodes) - 1)
-
 if syntax_errors:
-    print("\n----- SYNTAX ERRORS -----")
-    for err in syntax_errors:
-        print(err)
-
-    with open("syntax_errors.txt", "w") as f:
-        for err in syntax_errors:
-            f.write(err + "\n")
-
-    print("\nSyntax errors written to syntax_errors.txt")
-
+    print("❌ Syntax Errors Found!")
+    for err in syntax_errors: print(err)
 else:
-    print("\nNo syntax errors detected.")
-    open("syntax_errors.txt", "w").close()
+    print(f"✅ Success: {len(table.roles)} Roles, {len(table.users)} Users loaded.")
 
-print("\n[Phase 3] Semantic Analysis")
-
+# --- Phase 3: Semantic ---
+print("\n[Phase 3] Semantic Analysis...")
 semantic_errors = perform_semantic_analysis(table)
 
 if semantic_errors:
-    print("\n----- SEMANTIC ERRORS -----")
-    for err in semantic_errors:
-        print(err)
-
+    print("❌ Semantic Issues Found:")
+    for err in semantic_errors: print(err)
 else:
-    print("No semantic issues detected.")
+    print("✅ No semantic issues detected.")
 
-print("\n[Phase 4] Security Analysis (Week 8)")
+# --- Phase 4: Explainable Security Audit (Week 10) ---
+print("\n[Phase 4] Explainable Security Audit & Risk Assessment")
+print("-" * 60)
 
 security_results = run_security_analysis(table)
 
 if security_results:
-    print("\n----- SECURITY REPORT -----")
-    for issue in security_results:
-        print(issue)
-
-    with open("week8_security_report.txt", "w") as f:
-        for issue in security_results:
-            f.write(issue + "\n")
-
-    print("\nSecurity report written to week8_security_report.txt")
-
-else:
-    print("No security violations detected.")
-    open("week8_security_report.txt", "w").close()
+    critical_count = 0
     
-print("\nCompilation Finished")
+    with open("security_audit_report.txt", "w") as f:
+        f.write("WEEK 10 SECURITY AUDIT REPORT\n")
+        f.write("="*35 + "\n\n")
+
+        for issue in security_results:
+            # Handle structured dictionary results from Week 10
+            if isinstance(issue, dict):
+                level = issue.get('level', 'INFO')
+                msg = issue.get('msg', '')
+                evidence = issue.get('evidence', '')
+                
+                if level == "CRITICAL":
+                    icon = "🔥"
+                    critical_count += 1
+                elif level == "WARNING":
+                    icon = "⚠️ "
+                else:
+                    icon = "ℹ️ "
+
+                print(f"{icon} {level}: {msg}")
+                print(f"   ↳ REASON: {evidence}\n")
+                
+                # Write to file
+                f.write(f"[{level}] {msg}\n")
+                f.write(f"REASON: {evidence}\n\n")
+            
+            # Fallback for old string-based results
+            else:
+                print(f"ℹ️  INFO: {issue}")
+                f.write(f"INFO: {issue}\n\n")
+
+    print("-" * 60)
+    print(f"Summary: Found {critical_count} Critical Escalations.")
+    print("Detailed evidence saved to 'security_audit_report.txt'")
+else:
+    print("✅ PASS: No security violations detected.")
+from core.remediation import generate_remediation_proposals, verify_improvements
+
+# --- Phase 5: Remediation & Verification (Week 11) ---
+print("\n[Phase 5] Agent-Assisted Remediation & Verification")
+print("=" * 60)
+
+# 1. Generate suggestions
+proposals = generate_remediation_proposals(table, security_results)
+
+if proposals:
+    print(f"Proposed {len(proposals)} fixes to optimize the policy.")
+    
+    # 2. Verify: Run the "What-If" analysis
+    old_issue_count = len(security_results)
+    new_issue_count, remaining_issues = verify_improvements(table, proposals)
+    
+    print(f"Verification Results:")
+    print(f" 📉 Initial Security Issues: {old_issue_count}")
+    print(f" 📉 Post-Remediation Issues: {new_issue_count}")
+    
+    if new_issue_count < old_issue_count:
+        print(" ✅ VERIFIED: Suggested changes will resolve security vulnerabilities.")
+    
+    # 3. Generate Deliverable: Before-and-After Comparison Report
+    with open("remediation_comparison_report.txt", "w") as f:
+        f.write("RBAC POLICY: BEFORE-AND-AFTER COMPARISON\n")
+        f.write("="*40 + "\n\n")
+        f.write(f"STATUS: {'IMPROVED' if new_issue_count < old_issue_count else 'NO CHANGE'}\n")
+        f.write(f"CRITICAL ISSUES (BEFORE): {old_issue_count}\n")
+        f.write(f"CRITICAL ISSUES (AFTER):  {new_issue_count}\n\n")
+        
+        f.write("APPLIED REMEDIATIONS:\n")
+        for i, p in enumerate(proposals, 1):
+            f.write(f"{i}. {p['action']}\n")
+            f.write(f"   Reason: {p['reason']}\n")
+            
+        if remaining_issues:
+            f.write("\nREMAINING CONCERNS:\n")
+            for ri in remaining_issues:
+                f.write(f"- {ri['msg']}\n")
+        else:
+            f.write("\nSUCCESS: Policy is now clean and optimized.\n")
+
+    print("\nComparison report generated: 'remediation_comparison_report.txt'")
+else:
+    print("✅ Verified: Policy is already at peak security.")
+print("\nCompilation Finished.")
