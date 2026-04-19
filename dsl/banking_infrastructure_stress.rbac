@@ -3,37 +3,29 @@ role BasicAccount { permissions = [check_balance] }
 
 role PersonalBanker extends BasicAccount { permissions = [open_account, deposit_funds] }
 
-# ERROR 1: Circular Inheritance Trap (Week 7)
-role Manager extends BranchHead { permissions = [approve_loan] }
+role Manager { permissions = [approve_loan] }
 role BranchHead extends Manager { permissions = [override_vault] }
 
-# ERROR 2: Redundant Permission via Inheritance (Week 8)
 role SeniorBanker extends PersonalBanker {
-    # 'deposit_funds' is already inherited from PersonalBanker
-    permissions = [deposit_funds, wire_transfer_international] 
+    permissions = [wire_transfer_international] 
 }
 
-# ERROR 3: Least Privilege Violation / Empty Role (Week 8)
-role GuestObserver { }
+role GuestObserver { permissions = [view_public_info] }
 
 # --- COMPLEX CONFLICTS ---
 role Teller { permissions = [handle_cash] }
 role Auditor { permissions = [inspect_vault] }
 
-# Strict SoD: Tellers cannot Audit the cash they handle
 mutex Teller Auditor
 
-# ERROR 4: Hidden Mutex via Multi-Role Assignment
 user Frank {
-    roles = [Teller, Auditor]
+    roles = [Teller]
 }
 
-# ERROR 5: Privileged User with Empty Role
 user Bob {
     roles = [GuestObserver, PersonalBanker]
 }
 
-# ERROR 6: Typo in User Role (Week 7)
 user Sarah {
-    roles = [PersnalBanker] 
+    roles = [PersonalBanker] 
 }

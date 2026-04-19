@@ -6,11 +6,15 @@ import networkx as nx
 import os
 from datetime import datetime
 
+import hashlib
+import json
+
 # --- 1. IMPORT CORE LOGIC ---
 from frontend.parser import parse_policy
 from core.security_analysis import run_security_analysis
 from core.remediation import generate_remediation_proposals
 from frontend.semantic import perform_semantic_analysis
+from core.ai_agent import call_gemini_to_fix
 
 # --- 2. PAGE CONFIG ---
 st.set_page_config(page_title="RBAC Security Auditor", page_icon="🛡️", layout="wide")
@@ -35,6 +39,12 @@ if 'last_loaded_file' not in st.session_state:
     st.session_state.last_loaded_file = "New_Policy.rbac"
 
 # --- 5. SIDEBAR: FILE EXPLORER ---
+st.sidebar.header("🔑 AI Integration")
+api_key = st.sidebar.text_input("Gemini API Key", type="password")
+if api_key:
+    os.environ["GEMINI_API_KEY"] = api_key
+
+st.sidebar.write("---")
 st.sidebar.header("📁 RBAC File Explorer")
 dsl_folder = "dsl"
 if not os.path.exists(dsl_folder):
@@ -48,7 +58,6 @@ if files:
         with open(os.path.join(dsl_folder, selected_file), "r") as f:
             content = f.read()
             st.session_state.current_code = content
-            st.session_state.editor = content 
             st.session_state.last_loaded_file = selected_file
         st.rerun()
 
@@ -69,7 +78,6 @@ user Smith { roles = [Doctor, Pharmacist] }""",
 selected_label = st.sidebar.selectbox("Load Scenario:", list(test_cases.keys()))
 if st.sidebar.button("🚀 Load Scenario"):
     st.session_state.current_code = test_cases[selected_label]
-    st.session_state.editor = test_cases[selected_label] 
     st.session_state.last_loaded_file = "Scenario_" + selected_label.split()[1]
     st.rerun()
 
@@ -120,14 +128,14 @@ m_col3.metric("Critical Risks", critical_risks, delta=f"-{critical_risks}" if cr
 m_col4.metric("Security Health", f"{health}%")
 
 # --- 9. MAIN TABS ---
-tab_edit, tab_audit, tab_viz, tab_fix = st.tabs([
-    "📝 Live Editor", "🔍 Comprehensive Audit", "🕸️ Analytics & Circles", "💡 Remediation"
+tab_edit, tab_audit, tab_viz, tab_fix, tab_ledger = st.tabs([
+    "📝 Live Editor", "🔍 Comprehensive Audit", "🕸️ Analytics & Circles", "💡 Remediation", "📜 Contract Ledger"
 ])
 
 # TAB 1: EDITOR
 with tab_edit:
     st.subheader(f"Active File: {st.session_state.last_loaded_file}")
-    edited_code = st.text_area("RBAC DSL Editor", height=400, key="editor")
+    edited_code = st.text_area("RBAC DSL Editor", height=400, value=st.session_state.current_code)
     
     c1, c2 = st.columns([1, 4])
     if c1.button("🔄 Sync & Re-run"):
@@ -269,4 +277,89 @@ with tab_fix:
                 
     elif health == 100:
         st.success("✨ **Policy Optimized.** Your RBAC configuration is structurally sound and secure.")
+
+    st.markdown("---")
+    st.subheader("🤖 AI Self-Healing")
+    all_errors = s_errs + sem_errs + [f"[{r['category']}] {r['msg']}" for r in sec_res]
+    if all_errors and health < 100:
+        st.warning("Issues detected. You can use AI to automatically fix them.")
+        if st.button("🪄 Trigger AI Self-Healing", type="primary"):
+            if not os.environ.get("GEMINI_API_KEY"):
+                st.error("Please enter your Gemini API Key in the sidebar.")
+            else:
+                with st.spinner("AI is analyzing and fixing the policy..."):
+                    patched_code, err = call_gemini_to_fix(all_errors, st.session_state.current_code)
+                    if err:
+                        st.error(f"Failed to heal: {err}")
+                    else:
+                        st.session_state.current_code = patched_code
+                        st.success("Policy fixed successfully!")
+                        st.rerun()
+    elif health == 100:
+        st.success("No issues to fix. Policy is 100% healthy.")
+        st.markdown("### Current Healthy Policy")
+        st.code(st.session_state.current_code, language="text")
+        
+        if st.button("💾 Save Changes to File", key="save_remediated_policy"):
+            filename = st.session_state.last_loaded_file
+            if not filename.endswith(".rbac"): filename += ".rbac"
+            with open(os.path.join(dsl_folder, filename), "w") as f:
+                f.write(st.session_state.current_code)
+            st.success(f"Successfully saved to {filename}")
+
+# TAB 5: CONTRACT LEDGER
+with tab_ledger:
+    st.subheader("📜 Smart Contract Ledger")
+    
+    ledger_dir = "ledger"
+    if not os.path.exists(ledger_dir):
+        os.makedirs(ledger_dir)
+        
+    ledger_file = os.path.join(ledger_dir, "ledger.json")
+    if not os.path.exists(ledger_file):
+        with open(ledger_file, "w") as f:
+            json.dump([], f)
+            
+    with open(ledger_file, "r") as f:
+        ledger_data = json.load(f)
+
+    if health == 100:
+        st.success("✅ Policy is 100% healthy and ready for deployment.")
+        if st.button("🚀 Deploy to Ledger", type="primary"):
+            current_code = st.session_state.current_code
+            timestamp = datetime.now().isoformat()
+            code_hash = hashlib.sha256(current_code.encode()).hexdigest()
+            
+            # Save contract file
+            # replace colons for windows filename compatibility
+            contract_filename = f"{timestamp.replace(':', '-')}_{code_hash[:8]}.rbac"
+            contract_path = os.path.join(ledger_dir, contract_filename)
+            with open(contract_path, "w") as f:
+                f.write(current_code)
+                
+            # Update ledger.json
+            deployment_record = {
+                "timestamp": timestamp,
+                "hash": code_hash,
+                "file": contract_filename,
+                "source_file": st.session_state.last_loaded_file
+            }
+            ledger_data.append(deployment_record)
+            with open(ledger_file, "w") as f:
+                json.dump(ledger_data, f, indent=4)
+                
+            st.success(f"Contract deployed successfully! Hash: {code_hash}")
+            st.rerun()
+    else:
+        st.error(f"❌ Cannot deploy. Health score must be 100% (Current: {health}%).")
+        st.info("Please go to the Remediation tab to fix the policy before deployment.")
+        
+    st.markdown("---")
+    st.markdown("### Deployment History")
+    if ledger_data:
+        df_ledger = pd.DataFrame(ledger_data)
+        st.dataframe(df_ledger, use_container_width=True)
+    else:
+        st.info("No contracts deployed yet.")
+
 st.caption("RBAC Project | Week 12: Final Validation Suite")

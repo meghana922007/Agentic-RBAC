@@ -1,3 +1,5 @@
+import difflib
+
 def perform_semantic_analysis(table):
     errors = []
 
@@ -14,17 +16,27 @@ def perform_semantic_analysis(table):
     for role_name, role_obj in table.roles.items():
         for parent in role_obj.parents:
             if parent not in table.roles:
+                suggestion = ""
+                matches = difflib.get_close_matches(parent, table.roles.keys(), n=1)
+                if matches:
+                    suggestion = f" (Did you mean '{matches[0]}'?) [Fix Automatically]"
+                
                 errors.append(
                     f"[SEMANTIC ERROR] Line {role_obj.line}: "
-                    f"Role '{role_name}' extends undefined role '{parent}'"
+                    f"Role '{role_name}' extends undefined role '{parent}'{suggestion}"
                 )
 
     for user_name, user_obj in table.users.items():
         for role in user_obj.roles:
             if role not in table.roles:
+                suggestion = ""
+                matches = difflib.get_close_matches(role, table.roles.keys(), n=1)
+                if matches:
+                    suggestion = f" (Did you mean '{matches[0]}'?) [Fix Automatically]"
+                
                 errors.append(
                     f"[SEMANTIC ERROR] Line {user_obj.line}: "
-                    f"User '{user_name}' references undefined role '{role}'"
+                    f"User '{user_name}' references undefined role '{role}'{suggestion}"
                 )
 
     for user_name, user_obj in table.users.items():
