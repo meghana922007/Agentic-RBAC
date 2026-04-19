@@ -45,16 +45,13 @@ def generate_remediation_proposals(table, security_results):
         
         category = issue.get('category')
         evidence = issue.get('evidence', '')
+        msg = issue.get('msg', '')
 
-        # 1. Fixing Privilege Escalation (Role Restructuring)
+        # 1. Fixing Privilege Escalation (Your existing logic)
         if category == "Privilege Escalation":
-            # Extract path from evidence: "Trace: Intern -> Auditor -> Manager -> Admin -> [delete]"
             if "Trace:" in evidence:
                 path_part = evidence.split("Trace: ")[1].split(" -> [")[0]
                 roles = path_part.split(" -> ")
-                
-                # Suggest breaking the inheritance at the highest dangerous level
-                # If Intern -> Auditor -> Manager, we suggest removing 'extends Manager' from Auditor
                 if len(roles) >= 3:
                     target_role = roles[1]
                     parent_to_remove = roles[2]
@@ -65,16 +62,37 @@ def generate_remediation_proposals(table, security_results):
                         "reason": f"Breaks the indirect path allowing '{roles[0]}' to reach sensitive perms."
                     })
 
-        # 2. Fixing Redundancy (Permission Minimization)
+        # 2. Fixing Mutex Conflicts (NEW for Banking Case)
+        elif category == "Separation of Duties":
+            # Example msg: "User Frank violates Mutex [Teller, Auditor]"
+            user_name = msg.split("User ")[1].split(" violates")[0]
+            proposals.append({
+                "type": "USER_FIX",
+                "target": user_name,
+                "action": f"Remove one of the conflicting roles from user '{user_name}'",
+                "reason": "This user holds two roles that are mutually exclusive (SoD violation)."
+            })
+
+        # 3. Fixing Redundancy (Your existing logic)
         elif category == "Redundancy":
-            # Evidence: "Permission 'read' is already provided via inheritance."
-            role_name = issue.get('msg').split("'")[1]
-            perm_name = issue.get('msg').split("'")[3]
+            role_name = msg.split("'")[1]
+            perm_name = msg.split("'")[3]
             proposals.append({
                 "type": "MINIMIZE",
                 "target": role_name,
                 "action": f"Remove explicit permission '{perm_name}' from role '{role_name}'",
                 "reason": "Permission is already inherited; keeping it makes the policy harder to maintain."
             })
+
+    # 4. Catching Empty Roles (Least Privilege - NEW)
+    if table:
+        for name, role in table.roles.items():
+            if not role.permissions and not role.parents:
+                proposals.append({
+                    "type": "CLEANUP",
+                    "target": name,
+                    "action": f"Delete role '{name}' or assign permissions.",
+                    "reason": "This role is a 'Zombie Role'—it exists but grants zero access."
+                })
 
     return proposals

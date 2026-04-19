@@ -1,175 +1,272 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import networkx as nx
 import os
+from datetime import datetime
 
-# Import your core logic
+# --- 1. IMPORT CORE LOGIC ---
 from frontend.parser import parse_policy
 from core.security_analysis import run_security_analysis
-from core.remediation import generate_remediation_proposals, verify_improvements
+from core.remediation import generate_remediation_proposals
+from frontend.semantic import perform_semantic_analysis
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(
-    page_title="RBAC Security Auditor",
-    page_icon="🛡️",
-    layout="wide"
-)
+# --- 2. PAGE CONFIG ---
+st.set_page_config(page_title="RBAC Security Auditor", page_icon="🛡️", layout="wide")
 
-# --- CUSTOM CSS FOR "CLEAN & NEAT" LOOK ---
+# --- 3. UI STYLING ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    [data-testid="stMetric"] {
+        border: 1px solid #4B5563;
+        padding: 15px;
+        border-radius: 12px;
+        background-color: rgba(128, 128, 128, 0.1);
+    }
     .stAlert { border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ RBAC Policy Compiler & Security Dashboard")
-st.markdown("##### *Formal Language Analysis & Automated Security Auditing*")
-st.write("---")
+# --- 4. INITIALIZE SESSION STATE ---
+if 'current_code' not in st.session_state:
+    st.session_state.current_code = "role Admin { permissions = [all] }"
+if 'last_loaded_file' not in st.session_state:
+    st.session_state.last_loaded_file = "New_Policy.rbac"
 
-# --- SIDEBAR ---
-st.sidebar.header("📁 Policy Input")
-dsl_path = st.sidebar.text_input("RBAC File Path", "dsl/policy.rbac")
+# --- 5. SIDEBAR: FILE EXPLORER ---
+st.sidebar.header("📁 RBAC File Explorer")
+dsl_folder = "dsl"
+if not os.path.exists(dsl_folder):
+    os.makedirs(dsl_folder)
 
-if not os.path.exists(dsl_path):
-    st.sidebar.error(f"File not found: {dsl_path}")
-    st.stop()
+files = [f for f in os.listdir(dsl_folder) if f.endswith(".rbac")]
 
-# --- RUN ANALYSIS ---
-# We run this at the top level so data is available for all tabs
-table, ast_nodes, syntax_errors = parse_policy(dsl_path)
+if files:
+    selected_file = st.sidebar.selectbox("Select a Policy File:", files)
+    if st.sidebar.button("📂 Open & Audit File"):
+        with open(os.path.join(dsl_folder, selected_file), "r") as f:
+            content = f.read()
+            st.session_state.current_code = content
+            st.session_state.editor = content 
+            st.session_state.last_loaded_file = selected_file
+        st.rerun()
 
-if syntax_errors:
-    st.error("### ❌ Syntax Errors Detected")
-    for err in syntax_errors:
-        st.write(f"- {err}")
-    st.stop()
+# --- 6. SIDEBAR: QUICK TEST SUITE ---
+st.sidebar.write("---")
+st.sidebar.header("🧪 Week 12 Scenarios")
+test_cases = {
+    "🏥 Medical (Complex)": """# Healthcare Policy
+role Doctor { permissions = [prescribe_meds] }
+role Pharmacist { permissions = [fill_rx] }
+mutex Doctor Pharmacist
+user Smith { roles = [Doctor, Pharmacist] }""",
+    "✅ Secure Policy": "role User { permissions = [read] }\nuser Alice { roles = [User] }",
+    "🔥 Privilege Escalation": "role Admin { permissions = [delete] }\nrole Intern extends Admin { permissions = [read] }\nuser BadActor { roles = [Intern] }",
+    "🔄 Circular Trap": "role A extends B { }\nrole B extends A { }"
+}
 
-# Perform Security Analysis
-security_results = run_security_analysis(table)
-proposals = generate_remediation_proposals(table, security_results)
+selected_label = st.sidebar.selectbox("Load Scenario:", list(test_cases.keys()))
+if st.sidebar.button("🚀 Load Scenario"):
+    st.session_state.current_code = test_cases[selected_label]
+    st.session_state.editor = test_cases[selected_label] 
+    st.session_state.last_loaded_file = "Scenario_" + selected_label.split()[1]
+    st.rerun()
 
-# --- METRIC OVERVIEW ---
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Roles", len(table.roles))
-col2.metric("Total Users", len(table.users))
+# --- 7. ANALYSIS PIPELINE ---
+def run_pipeline(code):
+    with open("temp.rbac", "w") as f: 
+        f.write(code)
+    table, ast, s_errs = parse_policy("temp.rbac")
+    sem_errs = perform_semantic_analysis(table) if table else []
+    sec_res = run_security_analysis(table) if table else []
+    props = generate_remediation_proposals(table, sec_res) if table else []
+    return table, s_errs, sem_errs, sec_res, props
 
-critical_count = sum(1 for r in security_results if r['level'] == "CRITICAL")
-col3.metric("Critical Risks", critical_count, delta=f"-{critical_count}" if critical_count > 0 else "Clear", delta_color="inverse")
+table, s_errs, sem_errs, sec_res, props = run_pipeline(st.session_state.current_code)
 
-# Calculate "Security Health"
-health_score = max(0, 100 - (critical_count * 20))
-col4.metric("Security Health", f"{health_score}%")
+# --- NEW: REPORT GENERATOR FUNCTION ---
+def get_report_content():
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    report = f"RBAC AUDIT & REMEDIATION REPORT\nGenerated: {now}\nFile: {st.session_state.last_loaded_file}\n"
+    report += "="*50 + "\n\n"
+    
+    report += "1. SYNTAX ERRORS:\n" + ("\n".join(s_errs) if s_errs else "None") + "\n\n"
+    report += "2. SEMANTIC ERRORS:\n" + ("\n".join(sem_errs) if sem_errs else "None") + "\n\n"
+    report += "3. SECURITY RISKS:\n"
+    if sec_res:
+        for r in sec_res: report += f"- [{r['category']}] {r['msg']} (Evidence: {r['evidence']})\n"
+    else: report += "None\n"
+    
+    report += "\n4. PROPOSED REMEDIATIONS:\n"
+    if props:
+        for p in props: report += f"- Target: {p['target']} | Action: {p['action']}\n  Reason: {p['reason']}\n"
+    else: report += "Policy is already optimized.\n"
+    
+    return report
 
-st.write("")
+# --- 8. DASHBOARD METRICS ---
+st.title("🛡️ RBAC Compiler & Security Dashboard")
+m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 
-# --- MAIN TABS ---
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🔍 Security Audit", 
-    "🕸️ Role Hierarchy & Analytics", 
-    "💡 Remediation Suggestions",
-    "📄 Source Code Viewer"
+total_roles = len(table.roles) if table else 0
+total_users = len(table.users) if table else 0
+critical_risks = len(sec_res)
+health = max(0, 100 - (critical_risks * 15 + len(s_errs) * 10 + len(sem_errs) * 5))
+
+m_col1.metric("Total Roles", total_roles)
+m_col2.metric("Total Users", total_users)
+m_col3.metric("Critical Risks", critical_risks, delta=f"-{critical_risks}" if critical_risks > 0 else "Clear", delta_color="inverse")
+m_col4.metric("Security Health", f"{health}%")
+
+# --- 9. MAIN TABS ---
+tab_edit, tab_audit, tab_viz, tab_fix = st.tabs([
+    "📝 Live Editor", "🔍 Comprehensive Audit", "🕸️ Analytics & Circles", "💡 Remediation"
 ])
 
-# --- TAB 1: SECURITY AUDIT ---
-with tab1:
-    st.subheader("Explainable Security Report")
-    st.info("Each finding includes a 'Trace' showing the exact inheritance path discovered by the compiler.")
+# TAB 1: EDITOR
+with tab_edit:
+    st.subheader(f"Active File: {st.session_state.last_loaded_file}")
+    edited_code = st.text_area("RBAC DSL Editor", height=400, key="editor")
     
-    if not security_results:
-        st.success("✅ No security violations detected in the current policy.")
-    else:
-        for issue in security_results:
-            level = issue['level']
-            icon = "🔥" if level == "CRITICAL" else "⚠️" if level == "WARNING" else "ℹ️"
+    c1, c2 = st.columns([1, 4])
+    if c1.button("🔄 Sync & Re-run"):
+        st.session_state.current_code = edited_code
+        st.rerun()
+    
+    if c2.button("💾 Save to File"):
+        filename = st.session_state.last_loaded_file
+        if not filename.endswith(".rbac"): filename += ".rbac"
+        with open(os.path.join(dsl_folder, filename), "w") as f:
+            f.write(edited_code)
+        st.success(f"Successfully saved to {filename}")
+
+# TAB 2: COMPREHENSIVE AUDIT
+with tab_audit:
+    st.subheader("Compiler Pipeline Status")
+    
+    # Download Button for Audit
+    st.download_button(
+        label="📥 Download Full Audit Report",
+        data=get_report_content(),
+        file_name=f"audit_{st.session_state.last_loaded_file}.txt",
+        mime="text/plain"
+    )
+    
+    st.write("---")
+    st.markdown("##### 🛠️ Phase 2: Syntax Analysis")
+    if s_errs:
+        for e in s_errs: st.error(f"Syntax: {e}")
+    else: st.success("✅ No Syntax Errors")
+
+    st.markdown("##### 🧬 Phase 3: Semantic Validation")
+    if sem_errs:
+        for w in sem_errs: st.warning(f"Semantic: {w}")
+    elif table: st.success("✅ Logical Consistency Verified")
+
+    st.markdown("##### 🔥 Phase 4: Security Risks")
+    if sec_res:
+        for r in sec_res:
+            st.error(f"**{r['category']}**: {r['msg']}")
+            st.caption(f"Evidence: {r['evidence']}")
+    else: st.success("✅ No Security Violations")
+
+# TAB 3: VISUALIZATION
+with tab_viz:
+    if table:
+        v1, v2 = st.columns(2)
+        with v1:
+            st.subheader("Inheritance Map")
+            G = nx.DiGraph()
+            for n, r in table.roles.items():
+                G.add_node(n)
+                for p in r.parents: G.add_edge(p, n) 
             
-            with st.expander(f"{icon} {level}: {issue['category']} - {issue['msg']}"):
-                st.write(f"**Description:** {issue['msg']}")
-                st.code(f"Evidence: {issue['evidence']}", language="text")
-                if level == "CRITICAL":
-                    st.error("Action Required: This path allows unauthorized access to high-privilege permissions.")
+            if G.nodes:
+                try:
+                    cycles = list(nx.simple_cycles(G))
+                    if cycles:
+                        st.error(f"⚠️ Circular Dependency: {' -> '.join(cycles[0])} -> {cycles[0][0]}")
+                    else:
+                        layers = {}
+                        for node in nx.topological_sort(G):
+                            parents = list(G.predecessors(node))
+                            layers[node] = 0 if not parents else max(layers[p] for p in parents) + 1
+                        for node, layer in layers.items(): G.nodes[node]['subset'] = layer
+                        pos = nx.multipartite_layout(G, subset_key="subset", align='horizontal')
+                        for node in pos: pos[node][1] = -pos[node][1]
 
-# --- TAB 2: VISUALIZATIONS ---
-with tab2:
-    col_left, col_right = st.columns(2)
+                        edge_trace = go.Scatter(x=[], y=[], line=dict(width=1, color='#888'), hoverinfo='none', mode='lines')
+                        for edge in G.edges():
+                            x0, y0 = pos[edge[0]]; x1, y1 = pos[edge[1]]
+                            edge_trace['x'] += (x0, x1, None); edge_trace['y'] += (y0, y1, None)
+                        
+                        node_trace = go.Scatter(x=[pos[n][0] for n in G.nodes()], y=[pos[n][1] for n in G.nodes()], 
+                                                mode='markers+text', text=list(G.nodes()), textposition="bottom center",
+                                                marker=dict(size=20, color='#3b82f6', line=dict(width=2, color='white')))
+
+                        fig = go.Figure(data=[edge_trace, node_trace], layout=go.Layout(showlegend=False, xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), margin=dict(b=0,l=0,r=0,t=0)))
+                        st.plotly_chart(fig, use_container_width=True)
+                except: st.warning("Visualizer Error: Fix syntax first.")
+        with v2:
+            st.subheader("Permission Distribution")
+            df = pd.DataFrame([{"Role": k, "Perms": len(v.permissions)} for k,v in table.roles.items()])
+            if not df.empty:
+                st.plotly_chart(px.pie(df, values='Perms', names='Role', hole=0.5, template="plotly_dark"), use_container_width=True)
+
+# TAB 4: REMEDIATION
+# --- 4. UPDATED REMEDIATION TAB ---
+with tab_fix:
+    st.subheader("💡 Intelligent Remediation Strategy")
     
-    with col_left:
-        st.subheader("Inheritance Graph")
-        # Build the graph
-        G = nx.DiGraph()
-        for name, role in table.roles.items():
-            G.add_node(name)
-            for parent in role.parents:
-                G.add_edge(parent, name) # Edge from Parent to Child
+    # --- PHASE 1 & 2: SYNTAX & SEMANTIC SUGGESTIONS ---
+    if s_errs or sem_errs:
+        st.error("🛑 **Structural Fixes Required First**")
+        st.info("The Security Auditor is currently blocked. Follow these suggestions to unlock full scanning:")
         
-        if not G.edges:
-            st.write("No inheritance relationships defined.")
-        else:
-            # Create a simple coordinate system for nodes
-            pos = nx.spring_layout(G)
-            edge_x, edge_y = [], []
-            for edge in G.edges():
-                x0, y0 = pos[edge[0]]
-                x1, y1 = pos[edge[1]]
-                edge_x.extend([x0, x1, None])
-                edge_y.extend([y0, y1, None])
+        # 1. Syntax Suggestions
+        if s_errs:
+            with st.expander("🛠️ Syntax Fixes (Grammar)", expanded=True):
+                for err in s_errs:
+                    st.write(f"**Issue:** {err}")
+                    if "{" in err or "}" in err:
+                        st.success("💡 **Suggestion:** Check your curly braces. Every `role { ... }` block must be closed.")
+                    elif "[" in err or "]" in err:
+                        st.success("💡 **Suggestion:** Check your permission lists. Use `[perm1, perm2]` format.")
+                    else:
+                        st.success("💡 **Suggestion:** Check for missing colons or typos in keywords like 'role' or 'user'.")
 
-            # Use Plotly for the circle/node graph
-            fig_nodes = px.scatter(
-                x=[pos[n][0] for n in G.nodes()], 
-                y=[pos[n][1] for n in G.nodes()],
-                text=list(G.nodes()),
-                size=[30]*len(G.nodes()),
-                title="Role Inheritance Map"
-            )
-            fig_nodes.update_traces(textposition='top center', marker=dict(color='#3366CC', line_width=2))
-            st.plotly_chart(fig_nodes, use_container_width=True)
+        # 2. Semantic Suggestions (Logic)
+        if sem_errs:
+            with st.expander("🧬 Semantic Fixes (Logic)", expanded=True):
+                for err in sem_errs:
+                    st.write(f"**Issue:** {err}")
+                    if "undefined" in err.lower():
+                        st.success("💡 **Suggestion:** This role name doesn't exist. Check for typos or define the role first.")
+                    elif "circular" in err.lower() or "cycle" in err.lower():
+                        st.warning("💡 **Suggestion:** Break the inheritance loop. A role cannot extend itself or its own children.")
+                    elif "mutex" in err.lower():
+                        st.success("💡 **Suggestion:** A user is assigned to forbidden roles. Revoke one of the conflicting roles.")
+                    elif "no permissions" in err.lower():
+                        st.success("💡 **Suggestion:** This is a 'Zombie Role'. Add permissions or remove the role definition.")
 
-    with col_right:
-        st.subheader("Permission Distribution")
-        # Pie chart (Circles!)
-        perm_counts = [{"Role": name, "Permissions": len(role.permissions)} for name, role in table.roles.items()]
-        df_perms = pd.DataFrame(perm_counts)
-        fig_pie = px.pie(
-            df_perms, 
-            values='Permissions', 
-            names='Role', 
-            hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-# --- TAB 3: REMEDIATION ---
-with tab3:
-    st.subheader("Automated Policy Fixes")
-    
-    if not proposals:
-        st.success("No remediation steps needed.")
-    else:
-        # Before and After Summary
-        new_count, _ = verify_improvements(table, proposals)
-        
-        st.write(f"**Current Issues:** {len(security_results)} | **After Fixes:** {new_count}")
-        st.progress(1.0 if new_count == 0 else 0.5)
-
-        for p in proposals:
-            st.info(f"**Target Role:** {p['target']}\n\n**Suggested Action:** `{p['action']}`\n\n**Reason:** {p['reason']}")
-            
-        st.divider()
+    # --- PHASE 4: SECURITY REMEDIATION (Only if structure is OK) ---
+    elif props:
+        st.success("✅ Structure Verified. Applying Security Heuristics...")
+        # Download Button for the Full Fix Plan
         st.download_button(
-            label="Download Remediation Report",
-            data=f"Policy Audit Summary\nBefore: {len(security_results)} issues\nAfter: {new_count} issues\n\nFixes:\n" + "\n".join([f"- {x['action']}" for x in proposals]),
-            file_name="security_audit.txt"
+            label="📥 Download Remediation Plan (.txt)",
+            data=get_report_content(), # Uses your existing report function
+            file_name=f"fix_plan_{st.session_state.last_loaded_file}.txt",
+            mime="text/plain"
         )
-
-# --- TAB 4: SOURCE CODE ---
-with tab4:
-    st.subheader("Active Policy Content")
-    with open(dsl_path, "r") as f:
-        code = f.read()
-    st.code(code, language="ruby")
-
-st.write("---")
-st.caption("RBAC Compiler Project - CS Final Project Deliverable")
+        
+        for p in props:
+            with st.expander(f"Fix for {p['target']} ({p.get('type', 'SECURITY')})", expanded=True):
+                st.write(f"**Reason:** {p['reason']}")
+                st.info(f"**Action:** {p['action']}")
+                
+    elif health == 100:
+        st.success("✨ **Policy Optimized.** Your RBAC configuration is structurally sound and secure.")
+st.caption("RBAC Project | Week 12: Final Validation Suite")

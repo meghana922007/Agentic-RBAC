@@ -1,0 +1,42 @@
+# --- ROLES DEFINITION ---
+role BaseEmployee { permissions = [login, view_directory] }
+
+role MedicalStaff extends BaseEmployee { permissions = [view_schedules] }
+
+role Nurse extends MedicalStaff { permissions = [update_vitals, view_patients] }
+
+role Doctor extends MedicalStaff { permissions = [prescribe_meds, perform_surgery] }
+
+role Specialist extends Doctor { permissions = [order_lab_tests] }
+
+role PharmacyTech { permissions = [fill_prescriptions] }
+
+role Pharmacist extends PharmacyTech { permissions = [verify_controlled_substances] }
+
+# ERROR 1: Duplicate Role Detection (Week 7)
+role Nurse { permissions = [view_patients] } 
+
+# ERROR 2: Undefined Parent Role (Week 7)
+role Intern extends MedicalStudent { permissions = [shadow_doctor] }
+
+# --- SECURITY POLICIES (Week 8) ---
+# Separation of Duties: You cannot be the Doctor AND the Pharmacist (Risk of self-prescribing)
+mutex Doctor Pharmacist
+mutex Nurse PharmacyTech
+
+# ERROR 3: Privilege Escalation (Week 11/Security)
+# An Intern should NOT inherit from a Specialist
+role OverprivilegedIntern extends Specialist { permissions = [read_mri] }
+
+# --- USER ASSIGNMENTS ---
+user Alice { roles = [Nurse] }
+
+# ERROR 4: Mutex Violation (Direct)
+user Smith { roles = [Doctor, Pharmacist] } 
+
+# ERROR 5: Mutex Violation (Indirect/Inherited)
+# Specialist inherits Doctor, so this violates "mutex Doctor Pharmacist"
+user Jones { roles = [Specialist, Pharmacist] }
+
+# ERROR 6: Undefined Role Assignment
+user UnknownUser { roles: [Radiologist] }

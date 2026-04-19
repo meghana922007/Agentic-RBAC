@@ -1,0 +1,46 @@
+# ==========================================
+# TEST CASE: LOGICALLY SOUND BUT INSECURE
+# ==========================================
+
+# --- 1. Role Definitions (Clean Syntax) ---
+role Admin {
+    permissions = [all_access, delete_database]
+}
+
+role Auditor {
+    permissions = [view_logs, access_vault]
+}
+
+role Clerk {
+    permissions = [create_invoice]
+}
+
+# --- 2. Inheritance (Clean Structure) ---
+# RISK: Privilege Escalation
+# The Intern should not inherit from Admin.
+role Intern extends Admin {
+    permissions = [print_files]
+}
+
+# --- 3. Security Constraints (The Rules) ---
+# Rule: One person cannot be both a Clerk (Creator) and an Auditor (Checker).
+mutex Clerk Auditor
+
+# --- 4. User Assignments (The Violations) ---
+# VIOLATION 1: Mutex Conflict (Direct)
+user Bob {
+    roles = [Clerk, Auditor]
+}
+
+# VIOLATION 2: Privilege Escalation (Inherited)
+# This user gains 'delete_database' because Intern extends Admin.
+user Charlie {
+    roles = [Intern]
+}
+
+# VIOLATION 3: Mutex Conflict (Indirect/Deep)
+# Even though Clerk is defined simply, if Auditor was part of another 
+# chain, the engine would catch it here.
+user Sarah {
+    roles = [Clerk, Auditor]
+}
