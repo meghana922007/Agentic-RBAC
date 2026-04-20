@@ -1,0 +1,6 @@
+{
+    "filename": "banking_infrastructure_stress.rbac",
+    "cid": "Qm46dad096ffe23c3820f6d51d9db6b964831c6dbe5929",
+    "content": "# --- BANKING CORE ---\nrole BasicAccount { permissions = [check_balance] }\n\nrole PersonalBanker extends BasicAccount { permissions = [open_account, deposit_funds] }\n\nrole Manager { permissions = [approve_loan] }\nrole BranchHead extends Manager { permissions = [override_vault] }\n\nrole SeniorBanker extends PersonalBanker {\n    permissions = [wire_transfer_international]\n}\n\nrole GuestObserver { permissions = [view_public_info] }\n\n# --- COMPLEX CONFLICTS ---\nrole Teller { permissions = [handle_cash] }\nrole Auditor { permissions = [inspect_vault] }\n\nmutex Teller Auditor\n\nuser Frank {\n    roles = [Teller]\n}\n\nuser Bob {\n    roles = [GuestObserver, PersonalBanker]\n}\n\nuser Sarah {\n    roles = [SeniorBanker]\n}\n\nuser Alice {\n    roles = [BranchHead]\n}\n\nuser David {\n    roles = [Auditor]\n}",
+    "timestamp": 1776623200.9150171
+}

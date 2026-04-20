@@ -1,0 +1,6 @@
+{
+    "filename": "enterprise_healthcare_chaos.rbac",
+    "cid": "Qm6cc07566a0884c99ae4036e6ca73c22ed291855b1fc0",
+    "content": "role BaseEmployee { permissions = [login, view_directory] }\n\nrole MedicalStaff extends BaseEmployee { permissions = [view_schedules] }\n\nrole Nurse extends MedicalStaff { permissions = [update_vitals, view_patients] }\n\nrole Doctor extends MedicalStaff { permissions = [prescribe_meds, perform_surgery] }\n\nrole Specialist extends Doctor { permissions = [order_lab_tests] }\n\nrole PharmacyTech { permissions = [fill_prescriptions] }\n\nrole Pharmacist extends PharmacyTech { permissions = [verify_controlled_substances] }\n\nrole Intern extends MedicalStaff { permissions = [shadow_doctor] }\n\nmutex Doctor Pharmacist\nmutex Nurse PharmacyTech\n\nuser Alice { roles = [Nurse] }\n\nuser Smith { roles = [Doctor] } \n\nuser Jones { roles = [Specialist] }\n\nuser UnknownUser { roles = [BaseEmployee] }\n\nuser Bob { roles = [Intern] }\n\nuser Carol { roles = [Pharmacist] }",
+    "timestamp": 1776646997.1558988
+}

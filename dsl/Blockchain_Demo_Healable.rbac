@@ -1,0 +1,25 @@
+# Healable Blockchain Demo Policy
+# This file has 1 of every vulnerability but is small enough for AI to fix 100%
+
+role BaseUser { permissions = [read_public_data] }
+role KYCUser extends BaseUser { permissions = [deposit, withdraw] }
+
+role TreasuryManager { permissions = [approve_cheque, transfer_funds] }
+role ProtocolDeployer { permissions = [deploy_code, upgrade_contracts] }
+role Developer { permissions = [commit_code, write_cheque] }
+
+role BrokenSyntax extends KYCUser permissions = [stake] 
+
+role MaliciousFarmer extends KYCUser, TreasuryManager { permissions = [flash_loan] }
+
+mutex TreasuryManager Developer
+
+role V1_Migrator { permissions = [migrate_v1_state] }
+
+user DormantWallet { roles = [] }
+
+user DeFi_Whale { roles = [KYCUser, TreasuryManager, ProtocolDeployer, Developer] }
+
+user RogueEmployee { roles = [TreasuryManager, Developer] }
+
+user ToxicDev { roles = [Developer, ProtocolDeployer] }

@@ -15,6 +15,10 @@ from core.security_analysis import run_security_analysis
 from core.remediation import generate_remediation_proposals
 from frontend.semantic import perform_semantic_analysis
 from core.ai_agent import call_gemini_to_fix
+from core.solidity_generator import generate_solidity_contract
+from core.ipfs_simulator import simulate_ipfs_upload
+from core.query_engine import evaluate_access
+from core.profiler import run_stress_test
 
 # --- 2. PAGE CONFIG ---
 st.set_page_config(page_title="RBAC Security Auditor", page_icon="🛡️", layout="wide")
@@ -128,8 +132,8 @@ m_col3.metric("Critical Risks", critical_risks, delta=f"-{critical_risks}" if cr
 m_col4.metric("Security Health", f"{health}%")
 
 # --- 9. MAIN TABS ---
-tab_edit, tab_audit, tab_viz, tab_fix, tab_ledger = st.tabs([
-    "📝 Live Editor", "🔍 Comprehensive Audit", "🕸️ Analytics & Circles", "💡 Remediation", "📜 Contract Ledger"
+tab_edit, tab_audit, tab_viz, tab_fix, tab_ledger, tab_contract, tab_simulator, tab_green = st.tabs([
+    "📝 Live Editor", "🔍 Comprehensive Audit", "🕸️ Analytics & Circles", "💡 Remediation", "📜 Contract Ledger", "⚙️ Smart Contract", "🧪 Access Simulator", "🌱 Green Computing"
 ])
 
 # TAB 1: EDITOR
@@ -215,13 +219,13 @@ with tab_viz:
 
                         fig = go.Figure(data=[edge_trace, node_trace], layout=go.Layout(showlegend=False, xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                                         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), margin=dict(b=0,l=0,r=0,t=0)))
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
                 except: st.warning("Visualizer Error: Fix syntax first.")
         with v2:
             st.subheader("Permission Distribution")
             df = pd.DataFrame([{"Role": k, "Perms": len(v.permissions)} for k,v in table.roles.items()])
             if not df.empty:
-                st.plotly_chart(px.pie(df, values='Perms', names='Role', hole=0.5, template="plotly_dark"), use_container_width=True)
+                st.plotly_chart(px.pie(df, values='Perms', names='Role', hole=0.5, template="plotly_dark"), width="stretch")
 
 # TAB 4: REMEDIATION
 # --- 4. UPDATED REMEDIATION TAB ---
@@ -325,30 +329,23 @@ with tab_ledger:
 
     if health == 100:
         st.success("✅ Policy is 100% healthy and ready for deployment.")
-        if st.button("🚀 Deploy to Ledger", type="primary"):
+        if st.button("🚀 Deploy to IPFS Ledger", type="primary"):
             current_code = st.session_state.current_code
-            timestamp = datetime.now().isoformat()
-            code_hash = hashlib.sha256(current_code.encode()).hexdigest()
             
-            # Save contract file
-            # replace colons for windows filename compatibility
-            contract_filename = f"{timestamp.replace(':', '-')}_{code_hash[:8]}.rbac"
-            contract_path = os.path.join(ledger_dir, contract_filename)
-            with open(contract_path, "w") as f:
-                f.write(current_code)
+            with st.spinner("Uploading to Decentralized Storage (IPFS mock)..."):
+                cid = simulate_ipfs_upload(current_code, st.session_state.last_loaded_file)
                 
             # Update ledger.json
             deployment_record = {
-                "timestamp": timestamp,
-                "hash": code_hash,
-                "file": contract_filename,
+                "timestamp": datetime.now().isoformat(),
+                "ipfs_cid": cid,
                 "source_file": st.session_state.last_loaded_file
             }
             ledger_data.append(deployment_record)
             with open(ledger_file, "w") as f:
                 json.dump(ledger_data, f, indent=4)
                 
-            st.success(f"Contract deployed successfully! Hash: {code_hash}")
+            st.success(f"Contract deployed successfully! IPFS CID: {cid}")
             st.rerun()
     else:
         st.error(f"❌ Cannot deploy. Health score must be 100% (Current: {health}%).")
@@ -358,8 +355,104 @@ with tab_ledger:
     st.markdown("### Deployment History")
     if ledger_data:
         df_ledger = pd.DataFrame(ledger_data)
-        st.dataframe(df_ledger, use_container_width=True)
+        st.dataframe(df_ledger, width="stretch")
     else:
         st.info("No contracts deployed yet.")
 
-st.caption("RBAC Project | Week 12: Final Validation Suite")
+# TAB 6: SMART CONTRACT GENERATOR
+with tab_contract:
+    st.subheader("⚙️ Solidity Smart Contract Generator")
+    if health == 100 and table:
+        st.success("✅ Policy is healthy. Ready for Smart Contract Generation.")
+        solidity_code = generate_solidity_contract(table, "RBACPolicy")
+        st.code(solidity_code, language="solidity")
+        
+        contract_filename = f"{st.session_state.last_loaded_file.split('.')[0]}.sol"
+        st.download_button(
+            label="📥 Download .sol Contract", 
+            data=solidity_code, 
+            file_name=contract_filename, 
+            mime="text/plain"
+        )
+    else:
+        st.warning("⚠️ Cannot generate contract. Ensure your policy parses successfully and has 100% health in the Remediation tab.")
+
+# TAB 7: ACCESS SIMULATOR (DRY-RUN)
+with tab_simulator:
+    st.subheader("🧪 Access Simulator Engine (Dry-Run)")
+    if table and getattr(table, 'users', None):
+        st.write("Select a user and a target permission to evaluate their access dynamically.")
+        
+        all_perms = set()
+        for r in table.roles.values():
+            for p in r.permissions:
+                all_perms.add(p)
+                
+        if not all_perms:
+            st.warning("No permissions found in the current policy.")
+        else:
+            sim_user = st.selectbox("Select User:", list(table.users.keys()))
+            sim_perm = st.selectbox("Target Permission:", sorted(all_perms))
+            
+            if st.button("🔍 Evaluate Access", type="primary"):
+                has_access, reason = evaluate_access(table, sim_user, sim_perm)
+                if has_access:
+                    st.success(reason)
+                else:
+                    st.error(reason)
+    else:
+        st.info("Please define at least one user in your policy and ensure it parses successfully.")
+
+# TAB 8: GREEN COMPUTING & PROFILING
+with tab_green:
+    st.subheader("🌱 Energy & Performance Profiler")
+    st.write("Analyze the environmental impact and performance bottlenecks of your compiler.")
+    
+    col_run, col_iter = st.columns([1, 3])
+    iterations = col_iter.slider("Stress Test Iterations", min_value=10, max_value=500, value=100, step=10)
+    
+    if col_run.button("🚀 Run Profiler Stress Test", type="primary"):
+        with st.spinner(f"Running pipeline {iterations} times to measure energy consumption..."):
+            emissions_kg, df_profile = run_stress_test(run_pipeline, st.session_state.current_code, iterations=iterations)
+            
+            # Display Results
+            st.success("Stress Test Complete!")
+            
+            e_col1, e_col2, e_col3 = st.columns(3)
+            e_col1.metric("CO2 Emissions (kg)", f"{emissions_kg:.6f}")
+            e_col2.metric("Equivalent to", f"{emissions_kg * 1000 * 1000:.2f} mg CO2")
+            e_col3.metric("Iterations Evaluated", iterations)
+            
+            st.markdown("### 📍 Pinpoint Bottlenecks")
+            st.write("Top 15 most expensive function calls in the compiler (cProfile):")
+            st.dataframe(df_profile, width="stretch")
+            
+    st.markdown("---")
+    st.markdown("### 🔋 Historical Energy Visualization")
+    if os.path.exists("emissions.csv"):
+        try:
+            df_emissions = pd.read_csv("emissions.csv")
+            if not df_emissions.empty:
+                fig = px.bar(
+                    df_emissions, 
+                    x=df_emissions.index, 
+                    y=['cpu_power', 'ram_power'], 
+                    title="Power Consumption per Run (W)",
+                    labels={'value': 'Power (Watts)', 'index': 'Run ID', 'variable': 'Component'}
+                )
+                st.plotly_chart(fig, width="stretch")
+                
+                fig_pie = px.pie(
+                    names=['CPU Energy', 'RAM Energy'],
+                    values=[df_emissions['cpu_energy'].sum(), df_emissions['ram_energy'].sum()],
+                    title="Total Energy Breakdown (kWh)"
+                )
+                st.plotly_chart(fig_pie, width="stretch")
+            else:
+                st.info("Emissions data is empty. Run a stress test first.")
+        except Exception as e:
+            st.warning(f"Could not load visualizations: {e}")
+    else:
+        st.info("No 'emissions.csv' found. Run the Stress Test to generate CodeCarbon data.")
+
+st.caption("RBAC Project | Week 12: Scalable Blockchain Readiness & Green Computing")

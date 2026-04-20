@@ -1,31 +1,37 @@
-# --- BANKING CORE ---
-role BasicAccount { permissions = [check_balance] }
+# --- ROLES DEFINITION ---
+role BaseEmployee { permissions = [login, view_directory] }
 
-role PersonalBanker extends BasicAccount { permissions = [open_account, deposit_funds] }
+role MedicalStaff extends BaseEmployee { permissions = [view_schedules] }
 
-role Manager { permissions = [approve_loan] }
-role BranchHead extends Manager { permissions = [override_vault] }
+role Nurse extends MedicalStaff { permissions = [update_vitals, view_patients] }
 
-role SeniorBanker extends PersonalBanker {
-    permissions = [wire_transfer_international] 
-}
+role Doctor extends MedicalStaff { permissions = [prescribe_meds, perform_surgery] }
 
-role GuestObserver { permissions = [view_public_info] }
+role Specialist extends Doctor { permissions = [order_lab_tests] }
 
-# --- COMPLEX CONFLICTS ---
-role Teller { permissions = [handle_cash] }
-role Auditor { permissions = [inspect_vault] }
+role PharmacyTech { permissions = [fill_prescriptions] }
 
-mutex Teller Auditor
+role Pharmacist extends PharmacyTech { permissions = [verify_controlled_substances] }
 
-user Frank {
-    roles = [Teller]
-}
+role Intern extends MedicalStaff { permissions = [shadow_doctor] }
 
-user Bob {
-    roles = [GuestObserver, PersonalBanker]
-}
+role OverprivilegedIntern extends MedicalStaff { permissions = [read_mri] }
 
-user Sarah {
-    roles = [PersonalBanker] 
-}
+# --- SECURITY POLICIES ---
+mutex Doctor Pharmacist
+mutex Nurse PharmacyTech
+
+# --- USER ASSIGNMENTS ---
+user Alice { roles = [Nurse] }
+
+user Smith { roles = [Doctor] }
+
+user Jones { roles = [Specialist] }
+
+user UnknownUser { roles = [BaseEmployee] }
+
+user Bob { roles = [Intern] }
+
+user Charlie { roles = [OverprivilegedIntern] }
+
+user Dave { roles = [Pharmacist] }

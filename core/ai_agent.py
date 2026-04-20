@@ -26,9 +26,18 @@ ERRORS:
 BROKEN CODE:
 {broken_code}
 """
-        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro']
+        models_to_try = [
+            'models/gemini-3-flash-preview',
+            'models/gemini-2.5-flash',
+            'models/gemini-2.5-pro',
+            'models/gemini-2.0-flash',
+            'models/gemini-1.5-pro',
+            'models/gemini-1.5-flash',
+            'models/gemini-pro-latest',
+            'models/gemini-flash-latest'
+        ]
         response = None
-        last_error = None
+        errors = []
         
         for model_name in models_to_try:
             try:
@@ -36,16 +45,17 @@ BROKEN CODE:
                 response = model.generate_content(prompt)
                 break
             except Exception as e:
-                last_error = e
+                errors.append(f"{model_name}: {str(e)}")
                 continue
                 
         if not response:
+            last_error_details = "\n".join(errors)
             try:
                 available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 models_str = ", ".join(available_models) if available_models else "None found"
-                raise Exception(f"All tried models failed. Last error: {str(last_error)}\n\nAvailable models for your API key: {models_str}")
+                raise Exception(f"All tried models failed.\n\nAttempts:\n{last_error_details}\n\nAvailable models for your API key: {models_str}")
             except Exception as e2:
-                raise Exception(f"All tried models failed. Last error: {str(last_error)}\nCould not fetch available models: {str(e2)}")
+                raise Exception(f"All tried models failed.\n\nAttempts:\n{last_error_details}\n\nCould not fetch available models: {str(e2)}")
 
         patched_code = response.text.strip()
         

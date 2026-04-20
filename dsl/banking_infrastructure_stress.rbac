@@ -7,7 +7,7 @@ role Manager { permissions = [approve_loan] }
 role BranchHead extends Manager { permissions = [override_vault] }
 
 role SeniorBanker extends PersonalBanker {
-    permissions = [wire_transfer_international] 
+    permissions = [wire_transfer_international]
 }
 
 role GuestObserver { permissions = [view_public_info] }
@@ -27,5 +27,13 @@ user Bob {
 }
 
 user Sarah {
-    roles = [PersonalBanker] 
+    roles = [SeniorBanker]
+}
+
+user Alice {
+    roles = [BranchHead]
+}
+
+user David {
+    roles = [Auditor]
 }

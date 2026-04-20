@@ -1,0 +1,108 @@
+# Enterprise DeFi Protocol & DAO Access Control Policy (Medium Scale)
+# Designed to be large but 100% AI Healable
+
+role BaseUser { permissions = [read_public_data] }
+role KYCUser extends BaseUser { permissions = [deposit, withdraw] }
+role YieldFarmer extends KYCUser { permissions = [stake, claim_rewards] }
+
+role TreasuryManager { permissions = [approve_cheque, transfer_funds] }
+role ProtocolDeployer { permissions = [deploy_code, upgrade_contracts] }
+role ProtocolAuditor { permissions = [audit_code, view_private_logs] }
+role Developer { permissions = [commit_code, write_cheque] }
+
+role BrokenSyntax extends KYCUser permissions = [stake] 
+
+role MaliciousFarmer extends YieldFarmer, TreasuryManager { permissions = [flash_loan] }
+mutex ProtocolAuditor ProtocolDeployer
+mutex TreasuryManager Developer
+
+role V1_Migrator { permissions = [migrate_v1_state] }
+role V2_Migrator { permissions = [migrate_v2_state] }
+role V3_Migrator { permissions = [migrate_v3_state] }
+
+user DormantWallet_1 { roles = [] }
+user DormantWallet_2 { roles = [] }
+user DormantWallet_3 { roles = [] }
+user DeFi_Whale { roles = [KYCUser, YieldFarmer, TreasuryManager, ProtocolAuditor, Developer] }
+user RogueAuditor { roles = [ProtocolAuditor, ProtocolDeployer] }
+user ToxicDev { roles = [Developer, ProtocolDeployer] }
+
+user Degen_1 { roles = [KYCUser, BaseUser] }
+user Degen_2 { roles = [YieldFarmer] }
+user Degen_3 { roles = [BaseUser, YieldFarmer] }
+user Degen_4 { roles = [YieldFarmer, KYCUser] }
+user Degen_5 { roles = [BaseUser, KYCUser] }
+user Degen_6 { roles = [KYCUser] }
+user Degen_7 { roles = [KYCUser] }
+user Degen_8 { roles = [BaseUser, KYCUser] }
+user Degen_9 { roles = [KYCUser, BaseUser] }
+user Degen_10 { roles = [YieldFarmer, BaseUser] }
+user Degen_11 { roles = [KYCUser, BaseUser] }
+user Degen_12 { roles = [BaseUser, YieldFarmer] }
+user Degen_13 { roles = [YieldFarmer] }
+user Degen_14 { roles = [KYCUser, BaseUser] }
+user Degen_15 { roles = [YieldFarmer, BaseUser] }
+user Degen_16 { roles = [YieldFarmer, KYCUser] }
+user Degen_17 { roles = [KYCUser] }
+user Degen_18 { roles = [BaseUser] }
+user Degen_19 { roles = [YieldFarmer, BaseUser] }
+user Degen_20 { roles = [BaseUser] }
+user Degen_21 { roles = [YieldFarmer] }
+user Degen_22 { roles = [KYCUser] }
+user Degen_23 { roles = [YieldFarmer, KYCUser] }
+user Degen_24 { roles = [KYCUser, YieldFarmer] }
+user Degen_25 { roles = [KYCUser, YieldFarmer] }
+user Degen_26 { roles = [BaseUser] }
+user Degen_27 { roles = [BaseUser] }
+user Degen_28 { roles = [YieldFarmer, KYCUser] }
+user Degen_29 { roles = [BaseUser, YieldFarmer] }
+user Degen_30 { roles = [KYCUser, BaseUser] }
+user Degen_31 { roles = [YieldFarmer] }
+user Degen_32 { roles = [YieldFarmer] }
+user Degen_33 { roles = [KYCUser, BaseUser] }
+user Degen_34 { roles = [YieldFarmer, BaseUser] }
+user Degen_35 { roles = [KYCUser, YieldFarmer] }
+user Degen_36 { roles = [KYCUser, BaseUser] }
+user Degen_37 { roles = [KYCUser, BaseUser] }
+user Degen_38 { roles = [YieldFarmer, BaseUser] }
+user Degen_39 { roles = [BaseUser] }
+user Degen_40 { roles = [KYCUser] }
+user Degen_41 { roles = [BaseUser, YieldFarmer] }
+user Degen_42 { roles = [BaseUser, YieldFarmer] }
+user Degen_43 { roles = [BaseUser, KYCUser] }
+user Degen_44 { roles = [YieldFarmer, BaseUser] }
+user Degen_45 { roles = [BaseUser, KYCUser] }
+user Degen_46 { roles = [KYCUser, BaseUser] }
+user Degen_47 { roles = [KYCUser] }
+user Degen_48 { roles = [KYCUser] }
+user Degen_49 { roles = [KYCUser] }
+user Degen_50 { roles = [KYCUser, YieldFarmer] }
+user Degen_51 { roles = [BaseUser, YieldFarmer] }
+user Degen_52 { roles = [KYCUser] }
+user Degen_53 { roles = [KYCUser] }
+user Degen_54 { roles = [YieldFarmer, BaseUser] }
+user Degen_55 { roles = [YieldFarmer, BaseUser] }
+user Degen_56 { roles = [KYCUser] }
+user Degen_57 { roles = [YieldFarmer, BaseUser] }
+user Degen_58 { roles = [YieldFarmer, KYCUser] }
+user Degen_59 { roles = [BaseUser, KYCUser] }
+user Degen_60 { roles = [BaseUser, YieldFarmer] }
+user Degen_61 { roles = [BaseUser, KYCUser] }
+user Degen_62 { roles = [BaseUser, KYCUser] }
+user Degen_63 { roles = [BaseUser] }
+user Degen_64 { roles = [KYCUser] }
+user Degen_65 { roles = [KYCUser, YieldFarmer] }
+user Degen_66 { roles = [KYCUser, BaseUser] }
+user Degen_67 { roles = [KYCUser, BaseUser] }
+user Degen_68 { roles = [KYCUser, YieldFarmer] }
+user Degen_69 { roles = [KYCUser, BaseUser] }
+user Degen_70 { roles = [KYCUser, YieldFarmer] }
+user Degen_71 { roles = [BaseUser] }
+user Degen_72 { roles = [YieldFarmer] }
+user Degen_73 { roles = [YieldFarmer, KYCUser] }
+user Degen_74 { roles = [BaseUser, YieldFarmer] }
+user Degen_75 { roles = [BaseUser] }
+user Degen_76 { roles = [YieldFarmer, BaseUser] }
+user Degen_77 { roles = [KYCUser, YieldFarmer] }
+user Degen_78 { roles = [KYCUser] }
+user Degen_79 { roles = [KYCUser] }

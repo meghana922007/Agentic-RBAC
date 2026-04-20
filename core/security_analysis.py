@@ -97,6 +97,80 @@ def detect_redundant_permissions(table):
     return results
 
 
+def detect_toxic_combinations(table):
+    """Detects if a user inherits a toxic combination of permissions."""
+    results = []
+    # Define toxic pairs of permissions
+    TOXIC_PAIRS = [
+        ({"write_cheque", "approve_cheque"}, "Cannot both write and approve cheques."),
+        ({"commit_code", "deploy_code"}, "Cannot both commit code and deploy to production.")
+    ]
+    
+    for user_name, user_obj in table.users.items():
+        all_perms = set()
+        for role_name in user_obj.roles:
+            trace = get_permission_trace(role_name, table)
+            all_perms.update(trace.keys())
+            
+        for toxic_pair, reason in TOXIC_PAIRS:
+            if toxic_pair.issubset(all_perms):
+                results.append({
+                    "level": "CRITICAL",
+                    "category": "Toxic Combination (SoD)",
+                    "msg": f"User '{user_name}' possesses toxic permission combination: {list(toxic_pair)}",
+                    "evidence": reason
+                })
+    return results
+
+def detect_zombie_users(table):
+    """Detects users with no roles assigned."""
+    results = []
+    for user_name, user_obj in table.users.items():
+        if not user_obj.roles:
+            results.append({
+                "level": "WARNING",
+                "category": "Zombie User",
+                "msg": f"User '{user_name}' has no roles assigned.",
+                "evidence": "Dormant accounts should be removed or properly provisioned."
+            })
+    return results
+
+def detect_orphaned_roles(table):
+    """Detects roles that are never assigned to any user and never inherited."""
+    results = []
+    assigned_roles = set()
+    for user_obj in table.users.values():
+        assigned_roles.update(user_obj.roles)
+        
+    parent_roles = set()
+    for role_obj in table.roles.values():
+        parent_roles.update(role_obj.parents)
+        
+    for role_name in table.roles:
+        if role_name not in assigned_roles and role_name not in parent_roles:
+            results.append({
+                "level": "INFO",
+                "category": "Orphaned Role",
+                "msg": f"Role '{role_name}' is never assigned or inherited.",
+                "evidence": "Role adds unnecessary complexity to the contract."
+            })
+    return results
+
+def detect_over_privileged_users(table):
+    """Detects users with too many roles (violates Principle of Least Privilege)."""
+    results = []
+    MAX_ROLES = 3
+    for user_name, user_obj in table.users.items():
+        if len(user_obj.roles) > MAX_ROLES:
+            results.append({
+                "level": "WARNING",
+                "category": "Over-Privileged User",
+                "msg": f"User '{user_name}' is assigned {len(user_obj.roles)} roles directly (threshold: {MAX_ROLES}).",
+                "evidence": "Violates the Principle of Least Privilege. Consider consolidating roles."
+            })
+    return results
+
+
 def run_security_analysis(table):
     """
     Main entry point for Week 10.
@@ -106,11 +180,15 @@ def run_security_analysis(table):
     
     # Priority 1: Escalations
     report.extend(detect_privilege_escalation(table))
+    report.extend(detect_toxic_combinations(table))
     
-    # Priority 2: Conflicts
+    # Priority 2: Conflicts & Excess Privileges
     report.extend(detect_role_conflicts(table))
+    report.extend(detect_over_privileged_users(table))
     
-    # Priority 3: Redundancy
+    # Priority 3: Anomalies (Zombies, Redundancy, Orphans)
     report.extend(detect_redundant_permissions(table))
+    report.extend(detect_zombie_users(table))
+    report.extend(detect_orphaned_roles(table))
     
     return report
